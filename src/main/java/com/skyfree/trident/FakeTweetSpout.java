@@ -12,6 +12,8 @@ import java.util.*;
  * Copyright @ 2015 OPS
  * Author: tingfang.bao <mantingfangabc@163.com>
  * DateTime: 15/4/16 下午5:27
+ * 
+ * 非事务性spout
  */
 public class FakeTweetSpout implements IBatchSpout {
     private static final long serialVersionUID = 1L;
@@ -37,6 +39,10 @@ public class FakeTweetSpout implements IBatchSpout {
         COUNTRY_MAP.put(4, "Brazil");
     }
 
+    /**
+     * 
+     * @return 模拟生成元组
+     */
     private List<Object> recordGenerator() {
         final Random rand = new Random();
         int randomNumber = rand.nextInt(5);
@@ -52,21 +58,36 @@ public class FakeTweetSpout implements IBatchSpout {
         // 用于初始化变量，打开外部数据源连接等
     }
 
+    /**
+     * 一批一批元组的释放
+     * @param batchId 批号, 应该是由trident自动生成的
+     * @param tridentCollector 释放元组结合的发射对象
+     */
     public void emitBatch(long batchId, TridentCollector tridentCollector) {
+        System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
+        System.out.println(batchId);
         List<List<Object>> batches = this.batchesMap.get(batchId);
+        
         if (batches == null) {
             batches = new ArrayList<List<Object>>();
+            
             for (int i = 0; i < this.batchSize; i++) {
                 batches.add(this.recordGenerator());
             }
+            
             this.batchesMap.put(batchId, batches);
         }
 
         for (List<Object> list : batches) {
+            // 按批次发送元组
             tridentCollector.emit(list);
         }
     }
 
+    /**
+     * 如果成功处理了某一批次,重batchesMap中移除此批次数据
+     * @param batchId
+     */
     public void ack(long batchId) {
         this.batchesMap.remove(batchId);
     }
@@ -81,7 +102,7 @@ public class FakeTweetSpout implements IBatchSpout {
     }
 
     public Fields getOutputFields() {
-        // 确定了emit的字段
+        // 确定了每个元组emit的字段集合
         return new Fields("text", "country");
     }
 }

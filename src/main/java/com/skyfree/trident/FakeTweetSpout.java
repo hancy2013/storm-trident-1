@@ -64,8 +64,6 @@ public class FakeTweetSpout implements IBatchSpout {
      * @param tridentCollector 释放元组结合的发射对象
      */
     public void emitBatch(long batchId, TridentCollector tridentCollector) {
-        System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-        System.out.println(batchId);
         List<List<Object>> batches = this.batchesMap.get(batchId);
         
         if (batches == null) {

@@ -2,16 +2,11 @@ package com.skyfree.trident;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
-import backtype.storm.LocalDRPC;
 import backtype.storm.StormSubmitter;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.tuple.Fields;
-import storm.trident.TridentState;
 import storm.trident.TridentTopology;
 import storm.trident.operation.builtin.Count;
-import storm.trident.operation.builtin.FilterNull;
-import storm.trident.operation.builtin.MapGet;
-import storm.trident.testing.MemoryMapState;
 
 /**
  * Copyright @ 2015 OPS
@@ -19,9 +14,8 @@ import storm.trident.testing.MemoryMapState;
  * DateTime: 15/4/16 下午5:38
  */
 public class TridentSimpleTopology {
-    public static void main(String[] args) {
-        System.out.println(args);
-        simple_topology(args);
+    public static void main(String[] args) throws Exception {
+        simpleTopology(args);
     }
 
     /**
@@ -29,7 +23,7 @@ public class TridentSimpleTopology {
      *
      * @param args 命令行参数
      */
-    private static void simple_topology(String[] args) {
+    private static void simpleTopology(String[] args) {
         Config config = new Config();
 
         config.setMaxSpoutPending(20);
@@ -42,7 +36,7 @@ public class TridentSimpleTopology {
             // 提交到服务器
             config.setNumWorkers(3);
             try {
-                StormSubmitter.submitTopology("trident_topology", config, buildSimpleTopology());
+                StormSubmitter.submitTopology("trident_simple_topology", config, buildSimpleTopology());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -78,28 +72,6 @@ public class TridentSimpleTopology {
                 .aggregate(new Fields("country"), new Count(), new Fields("count"))
                 .each(new Fields("country", "count"), new TridentUtility.Print())
                 .parallelismHint(2);
-
-        return topology.build();
-    }
-
-    private static StormTopology buildSimpleTopology(LocalDRPC drpc) throws InterruptedException {
-        FakeTweetSpout spout = new FakeTweetSpout(10);
-        TridentTopology topology = new TridentTopology();
-
-        TridentState countryCount = topology.newStream("spout", spout)
-                .shuffle()
-                .each(new Fields("text", "country"), new TridentUtility.TweetFilter("#FIFA"))
-                .groupBy(new Fields("country"))
-                .persistentAggregate(new MemoryMapState.Factory(), new Fields("country"), new Count(), new Fields("count"))
-                .parallelismHint(2);
-
-
-        Thread.sleep(2000);
-
-        topology.newDRPCStream("Count", drpc)
-                .each(new Fields("args"), new TridentUtility.Split(), new Fields("country"))
-                .stateQuery(countryCount, new Fields("country"), new MapGet(), new Fields("count"))
-                .each(new Fields("count"), new FilterNull());
 
         return topology.build();
     }
